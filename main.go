@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -54,16 +57,59 @@ type RatesResponse struct {
 	Items []*RateItem `json:"items"`
 }
 
+type RateValue float64
+
+func (v *RateValue) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	s = strings.Replace(s, ",", ".", 1)
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return err
+	}
+	v2 := RateValue(f)
+	*v = v2
+	return nil
+}
+
+type RateTime time.Time
+
+const (
+	rateTimePrefix = "/Date("
+	rateTimeSuffix = ")/"
+)
+
+func (d *RateTime) UnmarshalJSON(b []byte) error {
+	// panic("here")
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	s = strings.TrimPrefix(s, rateTimePrefix)
+	s = strings.TrimSuffix(s, rateTimeSuffix)
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return err
+	}
+	var secs int64 = n / 1000
+	var nsecs int64 = n - secs*1000
+	d2 := time.Unix(secs, nsecs).UTC()
+	*d = RateTime(d2)
+	return nil
+}
+
 type RateItem struct {
-	CurrencyGroupAbbr string  `json:"currencyGroupAbbr"`
-	CurrencyAbbr      string  `json:"currencyAbbr"`
-	Title             string  `json:"title"`
-	Quantity          float64 `json:"quantity"`
-	Buy               string  `json:"buy"`
-	BuyArrow          string  `json:"buyArrow"`
-	Sell              string  `json:"sell"`
-	SellArrow         string  `json:"sellArrow"`
-	Gradiation        int     `json:"gradiation"`
-	DateActiveFrom    string  `json:"dateActiveFrom"`
-	IsMetal           bool    `json:"isMetal"`
+	CurrencyGroupAbbr string    `json:"currencyGroupAbbr"`
+	CurrencyAbbr      string    `json:"currencyAbbr"`
+	Title             string    `json:"title"`
+	Quantity          float64   `json:"quantity"`
+	Buy               RateValue `json:"buy"`
+	BuyArrow          string    `json:"buyArrow"`
+	Sell              RateValue `json:"sell"`
+	SellArrow         string    `json:"sellArrow"`
+	Gradation         float64   `json:"gradation"`
+	DateActiveFrom    RateTime  `json:"dateActiveFrom"`
+	IsMetal           bool      `json:"isMetal"`
 }
