@@ -1,4 +1,4 @@
-package main
+package vtb24
 
 import (
 	"encoding/json"

@@ -1,9 +1,8 @@
-package main
+package vtb24
 
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,21 +13,6 @@ const (
 	RatesRequest = `{"action":"{\"action\":\"currency\"}","scopeData":"{\"currencyRate\":\"ExchangePersonal\"}"}`
 	DefaultURL   = "https://www.vtb24.ru/services/ExecuteAction"
 )
-
-func main() {
-	c := new(Client)
-	resp, err := c.Rates()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, item := range resp.Items {
-		switch item.CurrencyAbbr {
-		case "USD", "EUR":
-			log.Printf("%v", item)
-		}
-	}
-}
 
 type Client struct{}
 
@@ -82,7 +66,6 @@ const (
 )
 
 func (d *RateTime) UnmarshalJSON(b []byte) error {
-	// panic("here")
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
