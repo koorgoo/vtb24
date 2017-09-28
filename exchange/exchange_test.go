@@ -5,18 +5,30 @@ import (
 	"testing"
 )
 
+func TestNew_panicWithoutRates(t *testing.T) {
+	defer func() {
+		if e := recover(); e == nil {
+			t.Fatal("New must panic")
+		}
+	}()
+	New([]Rate{}...)
+}
+
 type Table map[float64]struct {
 	Amount float64
 	Err    error
 }
 
-var BasicTests = []struct {
-	Rate Rate
-	Buy  Table
-	Sell Table
+var InterfaceTests = []struct {
+	Rates []Rate
+	Buy   Table
+	Sell  Table
 }{
+	// Single rate tests
 	{
-		Rate: Rate{Buy: 2, Sell: 3},
+		Rates: []Rate{
+			Rate{Buy: 2, Sell: 3},
+		},
 		Buy: Table{
 			-1:  {0, ErrNegativeAmount},
 			0:   {0, nil},
@@ -30,23 +42,7 @@ var BasicTests = []struct {
 			2.5: {7.5, nil},
 		},
 	},
-}
-
-func TestNew(t *testing.T) {
-	for i := range BasicTests {
-		tt := BasicTests[i]
-		e := New(tt.Rate)
-		t.Run(fmt.Sprintf("%+v", tt.Rate), func(t *testing.T) {
-			test(t, e, tt.Buy, tt.Sell)
-		})
-	}
-}
-
-var ThresholdsTests = []struct {
-	Rates []Rate
-	Buy   Table
-	Sell  Table
-}{
+	// Multiple rates tests
 	{
 		Rates: []Rate{
 			{Buy: 2, Sell: 3, Threshold: 10},
@@ -73,10 +69,10 @@ var ThresholdsTests = []struct {
 	},
 }
 
-func TestNewWithThresholds(t *testing.T) {
-	for i := range ThresholdsTests {
-		tt := ThresholdsTests[i]
-		e := NewWithThresholds(tt.Rates...)
+func TestNew(t *testing.T) {
+	for i := range InterfaceTests {
+		tt := InterfaceTests[i]
+		e := New(tt.Rates...)
 		t.Run(fmt.Sprintf("%+v", tt.Rates), func(t *testing.T) {
 			test(t, e, tt.Buy, tt.Sell)
 		})

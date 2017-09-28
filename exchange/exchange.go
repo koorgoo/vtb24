@@ -10,6 +10,12 @@ var (
 	ErrNoRate         = errors.New("exchange: no rate")
 )
 
+// errThreshold is returned by Func when provided amount does not match a
+// threshold.
+var errThreshold = errors.New("")
+
+const nilThreshold = 0.0
+
 type Func func(float64) (float64, error)
 
 type Interface interface {
@@ -21,24 +27,43 @@ type Rate struct {
 	Buy  float64
 	Sell float64
 
-	// Threshold sets the minimum amount for exchange. Threshold is used only
-	// in exchanger returned by NewWithThresholds().
+	// Threshold sets the minimum amount for exchange. Threshold is used to
+	// find a rate matching a provided amount only when a few rates are passed
+	// into New().
 	Threshold float64
 }
 
-func (r *Rate) doBuy(x float64) (float64, error)  { return exchange(x, r.Buy) }
-func (r *Rate) doSell(x float64) (float64, error) { return exchange(x, r.Sell) }
+func (r *Rate) doBuy(x float64) (float64, error)  { return r.exchange(x, r.Buy) }
+func (r *Rate) doSell(x float64) (float64, error) { return r.exchange(x, r.Sell) }
 
-func exchange(x, rate float64) (y float64, err error) {
-	if x < 0 {
+func (r *Rate) exchange(x, rate float64) (y float64, err error) {
+	switch {
+	case x < 0:
 		err = ErrNegativeAmount
-	} else {
+	case x < r.Threshold:
+		err = errThreshold
+	default:
 		y = x * rate
 	}
 	return
 }
 
-func New(rate Rate) Interface {
+// New returns an Interface.
+//
+// The function panics if provided slice of rates has 0 length.
+func New(rates ...Rate) Interface {
+	switch len(rates) {
+	case 0:
+		panic("exchange: New needs 1 or more rates")
+	case 1:
+		return newRateEx(rates[0])
+	default:
+		return newRatesEx(rates...)
+	}
+}
+
+func newRateEx(rate Rate) Interface {
+	rate.Threshold = nilThreshold
 	return &rateEx{Rate: &rate}
 }
 
@@ -47,22 +72,17 @@ type rateEx struct{ Rate *Rate }
 func (e *rateEx) Buy(x float64) (float64, error)  { return e.Rate.doBuy(x) }
 func (e *rateEx) Sell(x float64) (float64, error) { return e.Rate.doSell(x) }
 
-func NewWithThresholds(rates ...Rate) Interface {
-	return newRatesEx(rates...)
-}
-
 func newRatesEx(rates ...Rate) Interface {
 	e := new(ratesEx)
 	for i := range rates {
+		// TODO: panic when multiple rates have same thresholds?
 		e.Rates = append(e.Rates, &rates[i])
 	}
 	e.sortRates()
 	return e
 }
 
-type ratesEx struct {
-	Rates []*Rate
-}
+type ratesEx struct{ Rates []*Rate }
 
 func (e *ratesEx) sortRates() {
 	sort.Slice(e.Rates, func(i, j int) bool {
@@ -82,15 +102,12 @@ var (
 
 func (e *ratesEx) exchange(x float64, chooseFunc chooseFunc) (y float64, err error) {
 	for _, rate := range e.Rates {
-		if rate.Threshold > x {
+		y, err = chooseFunc(rate)(x)
+		if err == errThreshold {
 			continue
 		}
-		y, err = chooseFunc(rate)(x)
 		return
 	}
-	_, err = exchange(x, 1)
-	if err == nil {
-		err = ErrNoRate
-	}
+	y, err = 0, ErrNoRate
 	return
 }
