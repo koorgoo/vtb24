@@ -26,14 +26,8 @@ type Rate struct {
 	Threshold float64
 }
 
-func New(rate Rate) Interface {
-	return &basicEx{Rate: &rate}
-}
-
-type basicEx struct{ Rate *Rate }
-
-func (e *basicEx) Buy(x float64) (float64, error)  { return exchange(x, e.Rate.Buy) }
-func (e *basicEx) Sell(x float64) (float64, error) { return exchange(x, e.Rate.Sell) }
+func (r *Rate) doBuy(x float64) (float64, error)  { return exchange(x, r.Buy) }
+func (r *Rate) doSell(x float64) (float64, error) { return exchange(x, r.Sell) }
 
 func exchange(x, rate float64) (y float64, err error) {
 	if x < 0 {
@@ -44,41 +38,54 @@ func exchange(x, rate float64) (y float64, err error) {
 	return
 }
 
+func New(rate Rate) Interface {
+	return &rateEx{Rate: &rate}
+}
+
+type rateEx struct{ Rate *Rate }
+
+func (e *rateEx) Buy(x float64) (float64, error)  { return e.Rate.doBuy(x) }
+func (e *rateEx) Sell(x float64) (float64, error) { return e.Rate.doSell(x) }
+
 func NewWithThresholds(rates ...Rate) Interface {
-	e := new(withThresholdsEx)
+	return newRatesEx(rates...)
+}
+
+func newRatesEx(rates ...Rate) Interface {
+	e := new(ratesEx)
 	for i := range rates {
-		e.entries = append(e.entries, &basicEx{Rate: &rates[i]})
+		e.Rates = append(e.Rates, &rates[i])
 	}
-	e.sortEntries()
+	e.sortRates()
 	return e
 }
 
-type withThresholdsEx struct {
-	entries []*basicEx
+type ratesEx struct {
+	Rates []*Rate
 }
 
-func (e *withThresholdsEx) sortEntries() {
-	sort.Slice(e.entries, func(i, j int) bool {
-		return e.entries[i].Rate.Threshold > e.entries[j].Rate.Threshold
+func (e *ratesEx) sortRates() {
+	sort.Slice(e.Rates, func(i, j int) bool {
+		return e.Rates[i].Threshold > e.Rates[j].Threshold
 	})
 }
 
-func (e *withThresholdsEx) Buy(x float64) (float64, error) {
-	return e.exchange(x, func(e Interface) Func { return e.Buy })
-}
+func (e *ratesEx) Buy(x float64) (float64, error)  { return e.exchange(x, chooseBuy) }
+func (e *ratesEx) Sell(x float64) (float64, error) { return e.exchange(x, chooseSell) }
 
-func (e *withThresholdsEx) Sell(x float64) (float64, error) {
-	return e.exchange(x, func(e Interface) Func { return e.Sell })
-}
+type chooseFunc func(*Rate) Func
 
-type xChoose func(Interface) Func
+var (
+	chooseBuy  chooseFunc = func(r *Rate) Func { return r.doBuy }
+	chooseSell            = func(r *Rate) Func { return r.doSell }
+)
 
-func (e *withThresholdsEx) exchange(x float64, choose xChoose) (y float64, err error) {
-	for _, ex := range e.entries {
-		if ex.Rate.Threshold > x {
+func (e *ratesEx) exchange(x float64, chooseFunc chooseFunc) (y float64, err error) {
+	for _, rate := range e.Rates {
+		if rate.Threshold > x {
 			continue
 		}
-		y, err = choose(ex)(x)
+		y, err = chooseFunc(rate)(x)
 		return
 	}
 	_, err = exchange(x, 1)
