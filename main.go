@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/koorgoo/vtb24/api"
@@ -13,10 +14,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, item := range resp.Items {
-		switch item.CurrencyAbbr {
-		case "USD", "EUR":
-			log.Printf("%v", item)
-		}
+	for _, e := range ParseExchangers(resp) {
+		fmt.Println(e)
 	}
 }
