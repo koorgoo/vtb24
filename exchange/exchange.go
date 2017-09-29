@@ -56,15 +56,15 @@ func New(rates ...Rate) Interface {
 	case 0:
 		panic("exchange: New needs 1 or more rates")
 	case 1:
-		return newRateEx(rates[0])
+		return newRateEx(&rates[0])
 	default:
-		return newRatesEx(rates...)
+		return newRatesEx(rates)
 	}
 }
 
-func newRateEx(rate Rate) Interface {
+func newRateEx(rate *Rate) Interface {
 	rate.Threshold = nilThreshold
-	return &rateEx{Rate: &rate}
+	return &rateEx{Rate: rate}
 }
 
 type rateEx struct{ Rate *Rate }
@@ -72,8 +72,9 @@ type rateEx struct{ Rate *Rate }
 func (e *rateEx) Buy(x float64) (float64, error)  { return e.Rate.doBuy(x) }
 func (e *rateEx) Sell(x float64) (float64, error) { return e.Rate.doSell(x) }
 
-func newRatesEx(rates ...Rate) Interface {
+func newRatesEx(rates []Rate) Interface {
 	e := new(ratesEx)
+	// Use index to iterate over the slice not to copy structs.
 	for i := range rates {
 		// TODO: panic when multiple rates have same thresholds?
 		e.Rates = append(e.Rates, &rates[i])
