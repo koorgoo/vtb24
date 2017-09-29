@@ -1,4 +1,4 @@
-package main
+package bank
 
 import (
 	"fmt"
@@ -18,7 +18,8 @@ type Exchanger struct {
 }
 
 func (e *Exchanger) String() string {
-	return fmt.Sprintf("%s › %s (%s)", e.Src, e.Dst, e.Group)
+	group := api.GroupText(e.Group)
+	return fmt.Sprintf("%s › %s [%s]", e.Src, e.Dst, group)
 }
 
 func ParseExchangers(resp *api.Response) []*Exchanger {

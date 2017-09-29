@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/koorgoo/vtb24/api"
+	"github.com/koorgoo/vtb24/bank"
 )
 
 func main() {
@@ -14,7 +15,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, e := range ParseExchangers(resp) {
+	for _, e := range bank.ParseExchangers(resp) {
 		fmt.Println(e)
 	}
 }
