@@ -8,7 +8,7 @@ import (
 
 func main() {
 	c := new(vtb24.Client)
-	resp, err := c.Rates()
+	resp, err := c.Request()
 	if err != nil {
 		log.Fatal(err)
 	}
