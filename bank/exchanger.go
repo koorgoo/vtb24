@@ -19,7 +19,7 @@ type Exchanger struct {
 
 func (e *Exchanger) String() string {
 	group := api.GroupText(e.Group)
-	return fmt.Sprintf("%s › %s [%s]", e.Src, e.Dst, group)
+	return fmt.Sprintf("%s › %s (%s)", e.Src, e.Dst, group)
 }
 
 func ParseExchangers(resp *api.Response) []*Exchanger {
