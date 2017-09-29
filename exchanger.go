@@ -12,21 +12,17 @@ type Exchanger struct {
 	Src string
 	// Dst is a currency to exchange to.
 	Dst string
-	// Meta is an optional extra information about exchanger.
-	Meta string
+	// Group is a currency group affecting rates.
+	Group string
 	exchange.Interface
 }
 
 func (e *Exchanger) String() string {
-	s := fmt.Sprintf("%v › %v", e.Src, e.Dst)
-	if len(e.Meta) > 0 {
-		s += fmt.Sprintf(" (%v)", e.Meta)
-	}
-	return s
+	return fmt.Sprintf("%s › %s (%s)", e.Src, e.Dst, e.Group)
 }
 
 func ParseExchangers(resp *api.Response) []*Exchanger {
-	// Group rates by src, dst, and meta.
+	// Group rates by src, dst, and group.
 	m := map[string]map[string]map[string][]exchange.Rate{}
 	for _, item := range resp.Items {
 		src, dst := api.SplitCurrency(item.CurrencyAbbr)
@@ -39,8 +35,8 @@ func ParseExchangers(resp *api.Response) []*Exchanger {
 		if _, ok := m[src][dst]; !ok {
 			m[src][dst] = map[string][]exchange.Rate{}
 		}
-		meta := item.CurrencyGroupAbbr
-		m[src][dst][meta] = append(m[src][dst][meta], exchange.Rate{
+		group := item.CurrencyGroupAbbr
+		m[src][dst][group] = append(m[src][dst][group], exchange.Rate{
 			Buy:       float64(item.Buy),
 			Sell:      float64(item.Sell),
 			Threshold: item.Gradation,
@@ -50,9 +46,9 @@ func ParseExchangers(resp *api.Response) []*Exchanger {
 	var v []*Exchanger
 	for src := range m {
 		for dst := range m[src] {
-			for meta, rates := range m[src][dst] {
+			for group, rates := range m[src][dst] {
 				e := exchange.New(rates...)
-				ex := &Exchanger{Src: src, Dst: dst, Meta: meta, Interface: e}
+				ex := &Exchanger{Src: src, Dst: dst, Group: group, Interface: e}
 				v = append(v, ex)
 			}
 		}
