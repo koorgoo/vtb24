@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 
-	"github.com/koorgoo/vtb24"
+	"github.com/koorgoo/vtb24/api"
 )
 
 func main() {
-	c := new(vtb24.Client)
+	c := new(api.Client)
 	resp, err := c.Request()
 	if err != nil {
 		log.Fatal(err)
