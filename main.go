@@ -17,9 +17,7 @@ var DefaultFilters = []bank.ExFilter{
 	),
 	bank.WithSrcDst(
 		api.USD, api.RUB,
-		api.RUB, api.USD,
 		api.EUR, api.RUB,
-		api.RUB, api.EUR,
 	),
 }
 
