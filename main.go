@@ -8,6 +8,21 @@ import (
 	"github.com/koorgoo/vtb24/bank"
 )
 
+var DefaultFilters = []bank.ExchangerFilter{
+	bank.WithGroup(
+		api.GroupCash,
+		api.GroupCashDesk,
+		api.GroupCentralBank,
+		api.GroupTele,
+	),
+	bank.WithSrcDst(
+		api.USD, api.RUB,
+		api.RUB, api.USD,
+		api.EUR, api.RUB,
+		api.RUB, api.EUR,
+	),
+}
+
 func main() {
 	c := new(api.Client)
 	resp, err := c.Request()
@@ -15,7 +30,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, e := range bank.ParseExchangers(resp) {
+	ex := bank.ParseExchangers(resp)
+	ex = bank.FilterExchangers(ex, DefaultFilters...)
+
+	for _, e := range ex {
 		fmt.Println(e)
 	}
 }

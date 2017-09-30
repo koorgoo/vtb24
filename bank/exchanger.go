@@ -56,3 +56,49 @@ func ParseExchangers(resp *api.Response) []*Exchanger {
 	}
 	return v
 }
+
+func FilterExchangers(v []*Exchanger, filters ...ExchangerFilter) []*Exchanger {
+	var a []*Exchanger
+	for _, ex := range v {
+		if filterExchanger(ex, filters) {
+			a = append(a, ex)
+		}
+	}
+	return a
+}
+
+func filterExchanger(e *Exchanger, filters []ExchangerFilter) bool {
+	for _, filter := range filters {
+		if !filter(e) {
+			return false
+		}
+	}
+	return true
+}
+
+type ExchangerFilter func(*Exchanger) bool
+
+func WithSrcDst(srcdst ...string) ExchangerFilter {
+	if len(srcdst)%2 == 1 {
+		panic("odd number of src and dst")
+	}
+	return func(e *Exchanger) bool {
+		for i := 0; i < len(srcdst); i = i + 2 {
+			if e.Src == srcdst[i] && e.Dst == srcdst[i+1] {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func WithGroup(groups ...string) ExchangerFilter {
+	return func(e *Exchanger) bool {
+		for i := range groups {
+			if e.Group == groups[i] {
+				return true
+			}
+		}
+		return false
+	}
+}
