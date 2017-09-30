@@ -7,22 +7,22 @@ import (
 	"github.com/koorgoo/vtb24/exchange"
 )
 
-type Exchanger struct {
-	// Src is a currency to exchange.
+type Ex struct {
+	// Src is a currency to exchange (buy or sell).
 	Src string
-	// Dst is a currency to exchange to.
+	// Dst is a currency to exchange to (sold or bought).
 	Dst string
 	// Group is a currency group affecting rates.
 	Group string
 	exchange.Interface
 }
 
-func (e *Exchanger) String() string {
+func (e *Ex) String() string {
 	group := api.GroupText(e.Group)
 	return fmt.Sprintf("%s › %s (%s)", e.Src, e.Dst, group)
 }
 
-func ParseExchangers(resp *api.Response) []*Exchanger {
+func ParseEx(resp *api.Response) []*Ex {
 	// Group rates by src, dst, and group.
 	m := map[string]map[string]map[string][]exchange.Rate{}
 	for _, item := range resp.Items {
@@ -44,12 +44,12 @@ func ParseExchangers(resp *api.Response) []*Exchanger {
 		})
 	}
 
-	var v []*Exchanger
+	var v []*Ex
 	for src := range m {
 		for dst := range m[src] {
 			for group, rates := range m[src][dst] {
 				e := exchange.New(rates...)
-				ex := &Exchanger{Src: src, Dst: dst, Group: group, Interface: e}
+				ex := &Ex{Src: src, Dst: dst, Group: group, Interface: e}
 				v = append(v, ex)
 			}
 		}
@@ -57,17 +57,17 @@ func ParseExchangers(resp *api.Response) []*Exchanger {
 	return v
 }
 
-func FilterExchangers(v []*Exchanger, filters ...ExchangerFilter) []*Exchanger {
-	var a []*Exchanger
+func FilterEx(v []*Ex, filters ...ExFilter) []*Ex {
+	var a []*Ex
 	for _, ex := range v {
-		if filterExchanger(ex, filters) {
+		if filterEx(ex, filters) {
 			a = append(a, ex)
 		}
 	}
 	return a
 }
 
-func filterExchanger(e *Exchanger, filters []ExchangerFilter) bool {
+func filterEx(e *Ex, filters []ExFilter) bool {
 	for _, filter := range filters {
 		if !filter(e) {
 			return false
@@ -76,13 +76,13 @@ func filterExchanger(e *Exchanger, filters []ExchangerFilter) bool {
 	return true
 }
 
-type ExchangerFilter func(*Exchanger) bool
+type ExFilter func(*Ex) bool
 
-func WithSrcDst(srcdst ...string) ExchangerFilter {
+func WithSrcDst(srcdst ...string) ExFilter {
 	if len(srcdst)%2 == 1 {
 		panic("odd number of src and dst")
 	}
-	return func(e *Exchanger) bool {
+	return func(e *Ex) bool {
 		for i := 0; i < len(srcdst); i = i + 2 {
 			if e.Src == srcdst[i] && e.Dst == srcdst[i+1] {
 				return true
@@ -92,8 +92,8 @@ func WithSrcDst(srcdst ...string) ExchangerFilter {
 	}
 }
 
-func WithGroup(groups ...string) ExchangerFilter {
-	return func(e *Exchanger) bool {
+func WithGroup(groups ...string) ExFilter {
+	return func(e *Ex) bool {
 		for i := range groups {
 			if e.Group == groups[i] {
 				return true
