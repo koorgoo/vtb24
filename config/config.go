@@ -8,10 +8,14 @@ import (
 )
 
 type Config struct {
-	WebAddr           string `json:"web_addr"`
-	TelegramToken     string `json:"telegram_token"`
-	AmazonWishListURL string `json:"amazon_wish_list_url"`
-	DonateCardNumber  string `json:"donate_card_number"`
+	WebAddr       string        `json:"web_addr"`
+	TelegramToken string        `json:"telegram_token"`
+	Donate        *DonateConfig `json:"donate"`
+}
+
+type DonateConfig struct {
+	CardNumber  string `json:"card_number"`
+	WishListURL string `json:"wish_list_url"`
 }
 
 var (
