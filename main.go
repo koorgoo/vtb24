@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/koorgoo/telegram"
 	"github.com/koorgoo/vtb24/api"
@@ -32,6 +34,8 @@ var DefaultFilters = []bank.ExFilter{
 	),
 }
 
+const RatesRetryTimeout = time.Minute
+
 var cfgPath = flag.String("config.file", "config.json", "path to configuration file")
 
 func main() {
@@ -42,14 +46,31 @@ func main() {
 		log.Fatal(err)
 	}
 
+	errc := make(chan error, 1)
 	termc := make(chan os.Signal)
 	signal.Notify(termc, os.Interrupt, syscall.SIGTERM)
 
-	errc := make(chan error, 1)
 	ex, err := GetDefaultEx()
 	if err != nil {
 		errc <- err
 	}
+
+	var rates atomic.Value
+	rates.Store(ex)
+
+	go func() {
+		for {
+			t := cfg.RatesTimeout
+			e, err := GetDefaultEx()
+			if err == nil {
+				rates.Store(e)
+			} else {
+				log.Printf("failed to update rates: %s", err)
+				t = RatesRetryTimeout
+			}
+			time.Sleep(t)
+		}
+	}()
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -83,6 +104,7 @@ func main() {
 					continue
 				}
 
+				ex := rates.Load().([]bank.Ex)
 				text, mode := chat.MakeMessage(n, ex)
 				if text == "" {
 					_, _ = bot.SendMessage(context.TODO(), &telegram.TextMessage{
