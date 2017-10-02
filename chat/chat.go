@@ -25,8 +25,8 @@ func MakeMessage(n float64, ex []bank.Ex) (text string, mode telegram.ParseMode,
 			return
 		}
 
-		fmt.Fprintf(&buf, "__%s__\n", e)
-		fmt.Fprintf(&buf, "**%v** %v - **%v** (покупка) **%v** (продажа) %v\n\n",
+		fmt.Fprintf(&buf, "_%s_\n", e)
+		fmt.Fprintf(&buf, "*%v* %v - *%v* (покупка) *%v* (продажа) %v\n\n",
 			n, e.Src(), FormatValue(buy), FormatValue(sell), e.Dst())
 	}
 
