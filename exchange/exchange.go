@@ -115,14 +115,16 @@ func newRatesEx(rates []Rate) Interface {
 		rate := &rates[i]
 		e.buy = append(e.buy, rate)
 		e.sell = append(e.sell, rate)
+		e.rates = append(e.rates, rate)
 	}
 	e.sortRates()
 	return e
 }
 
 type ratesEx struct {
-	buy  []*Rate
-	sell []*Rate
+	buy   []*Rate
+	sell  []*Rate
+	rates []*Rate
 }
 
 func (e *ratesEx) sortRates() {
@@ -138,8 +140,8 @@ func (e *ratesEx) Buy(x float64) (float64, error)  { return exchange(x, e.buy, c
 func (e *ratesEx) Sell(x float64) (float64, error) { return exchange(x, e.sell, chooseSell) }
 
 func (e *ratesEx) Rates() []Rate {
-	v := make([]Rate, len(e.buy))
-	for i, r := range e.buy {
+	v := make([]Rate, len(e.rates))
+	for i, r := range e.rates {
 		v[i] = *r
 	}
 	return v
