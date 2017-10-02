@@ -21,13 +21,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var OrderedGroups = []string{
+	api.GroupTele,
+	api.GroupCash,
+	api.GroupCentralBank,
+	api.GroupCashDesk,
+}
+
 var DefaultFilters = []bank.ExFilter{
-	bank.WithGroup(
-		api.GroupCash,
-		api.GroupCashDesk,
-		api.GroupCentralBank,
-		api.GroupTele,
-	),
+	bank.WithGroup(OrderedGroups...),
 	bank.WithSrcDst(
 		api.USD, api.RUB,
 		api.EUR, api.RUB,
@@ -105,7 +107,7 @@ func main() {
 				}
 
 				ex := rates.Load().([]bank.Ex)
-				text, mode := chat.MakeMessage(n, ex)
+				text, mode := chat.MakeMessage(n, ex, OrderedGroups)
 				if text == "" {
 					_, _ = bot.SendMessage(context.TODO(), &telegram.TextMessage{
 						ChatID: update.Message.Chat.ID,

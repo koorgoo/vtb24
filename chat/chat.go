@@ -6,32 +6,48 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/koorgoo/telegram"
 	"github.com/koorgoo/vtb24/api"
 	"github.com/koorgoo/vtb24/bank"
 )
 
-func MakeMessage(n float64, ex []bank.Ex) (text string, mode telegram.ParseMode) {
-	var buf bytes.Buffer
+func MakeMessage(n float64, ex []bank.Ex, groups []string) (text string, mode telegram.ParseMode) {
+	m := map[string][]bank.Ex{}
 	for _, e := range ex {
-		s1, ok1 := formatOp(n, e)
-		s2, ok2 := formatOp(n, bank.Invert(e))
+		m[e.Group()] = append(m[e.Group()], e)
+	}
 
-		if !ok1 && !ok2 {
-			continue
-		}
+	var buf bytes.Buffer
+	var hasGroups = true
 
-		fmt.Fprintln(&buf, FormatEx(e))
-		if ok1 {
-			fmt.Fprintln(&buf, s1)
-		}
-		if ok2 {
-			fmt.Fprintln(&buf, s2)
-		}
+	for _, group := range groups {
+		var writeGroup sync.Once
 
-		// Line break.
-		fmt.Fprintln(&buf)
+		for _, e := range m[group] {
+			s, ok := formatOp(n, e)
+			si, oki := formatOp(n, bank.Invert(e))
+
+			if !ok && !oki {
+				continue
+			}
+
+			writeGroup.Do(func() {
+				fmt.Fprintf(&buf, formatGroup(e.Group(), !hasGroups))
+				hasGroups = true
+			})
+
+			if ok {
+				fmt.Fprintln(&buf, s)
+			}
+			if oki {
+				fmt.Fprintln(&buf, si)
+			}
+
+			// Line break between ops.
+			fmt.Fprintln(&buf)
+		}
 	}
 	return buf.String(), telegram.ModeMarkdown
 }
@@ -62,7 +78,11 @@ func FormatValue(v float64) (s string) {
 	return
 }
 
-func FormatEx(ex bank.Ex) string {
-	s := api.GroupText(ex.Group())
-	return fmt.Sprintf("_%s_", s)
+func formatGroup(group string, isFirst bool) string {
+	var suffix string
+	if !isFirst {
+		suffix = "\n"
+	}
+	text := api.GroupText(group)
+	return fmt.Sprintf("%s_%s_\n\n", suffix, text)
 }
