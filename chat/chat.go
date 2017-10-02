@@ -12,39 +12,42 @@ import (
 	"github.com/koorgoo/vtb24/bank"
 )
 
-func MakeMessage(n float64, ex []bank.Ex) (text string, mode telegram.ParseMode, err error) {
+func MakeMessage(n float64, ex []bank.Ex) (text string, mode telegram.ParseMode) {
 	var buf bytes.Buffer
-	var buy, sell float64
-
 	for _, e := range ex {
-		buy, err = e.Buy(n)
-		if err != nil {
-			return
-		}
-		sell, err = e.Sell(n)
-		if err != nil {
-			return
+		s1, ok1 := formatOp(n, e)
+		s2, ok2 := formatOp(n, bank.Invert(e))
+
+		if !ok1 && !ok2 {
+			continue
 		}
 
-		fmt.Fprintf(&buf, "%s\n", FormatEx(e))
-		fmt.Fprintf(&buf, "*%v* %v - *%v* (покупка) *%v* (продажа) %v\n",
-			n, e.Src(), FormatValue(buy), FormatValue(sell), e.Dst())
-
-		e = bank.Invert(e)
-		buy, err = e.Buy(n)
-		if err != nil {
-			return
+		fmt.Fprintln(&buf, FormatEx(e))
+		if ok1 {
+			fmt.Fprintln(&buf, s1)
 		}
-		sell, err = e.Sell(n)
-		if err != nil {
-			return
+		if ok2 {
+			fmt.Fprintln(&buf, s2)
 		}
 
-		fmt.Fprintf(&buf, "*%v* %v - *%v* (покупка) *%v* (продажа) %v\n\n",
-			n, e.Src(), FormatValue(buy), FormatValue(sell), e.Dst())
+		// Line break.
+		fmt.Fprintln(&buf)
 	}
+	return buf.String(), telegram.ModeMarkdown
+}
 
-	return buf.String(), telegram.ModeMarkdown, nil
+func formatOp(n float64, e bank.Ex) (s string, ok bool) {
+	buy, err := e.Buy(n)
+	if err != nil {
+		return
+	}
+	sell, err := e.Sell(n)
+	if err != nil {
+		return
+	}
+	s = fmt.Sprintf("*%v* %v - *%v* (покупка) *%v* (продажа) %v",
+		n, e.Src(), FormatValue(buy), FormatValue(sell), e.Dst())
+	return s, true
 }
 
 func FormatValue(v float64) (s string) {
