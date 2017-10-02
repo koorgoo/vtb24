@@ -49,10 +49,14 @@ func doExchange(x, rate, threshold float64) (y float64, err error) {
 	return
 }
 
-func (r *Rate) invert() *Rate {
-	s, b := 1/r.Buy, 1/r.Sell
+func (r *Rate) Invert() *Rate {
+	b, s := r.invertRates()
 	th := r.invertThreshold()
 	return &Rate{Buy: b, Sell: s, Threshold: th, inverted: !r.inverted}
+}
+
+func (r *Rate) invertRates() (buy, sell float64) {
+	return 1 / r.Sell, 1 / r.Buy
 }
 
 func (r *Rate) invertThreshold() Threshold {
@@ -169,7 +173,7 @@ func exchange(x float64, rates []*Rate, chooseFunc chooseFunc) (y float64, err e
 func Invert(v Interface) Interface {
 	rates := v.Rates()
 	for i := range rates {
-		rates[i] = *rates[i].invert()
+		rates[i] = *rates[i].Invert()
 	}
 	return New(rates...)
 }
