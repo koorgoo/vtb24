@@ -45,8 +45,8 @@ var InterfaceTests = []struct {
 	// Multiple rates tests
 	{
 		Rates: []Rate{
-			{Buy: 2, Sell: 3, Threshold: 10},
-			{Buy: 3, Sell: 6, Threshold: 20},
+			{Buy: 2, Sell: 3, Threshold: NewThreshold(10, 10)},
+			{Buy: 3, Sell: 6, Threshold: NewThreshold(20, 20)},
 		},
 		Buy: Table{
 			-1:  {0, ErrNegativeAmount},
