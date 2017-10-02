@@ -59,8 +59,7 @@ func ParseEx(resp *api.Response) []Ex {
 		for dst := range m[src] {
 			for group, rates := range m[src][dst] {
 				e := exchange.New(rates...)
-				ex := &ex{src: src, dst: dst, group: group, Interface: e}
-				v = append(v, ex)
+				v = append(&ex{src: src, dst: dst, group: group, Interface: e})
 			}
 		}
 	}
@@ -111,4 +110,9 @@ func WithGroup(groups ...string) ExFilter {
 		}
 		return false
 	}
+}
+
+func Invert(ex Ex) Ex {
+	i := exchange.Invert(ex)
+	return &ex{src: ex.Dst(), dst: ex.Src(), group: ex.Group(), Interface: i}
 }

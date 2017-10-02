@@ -21,6 +21,7 @@ type Func func(float64) (float64, error)
 type Interface interface {
 	Buy(float64) (float64, error)
 	Sell(float64) (float64, error)
+	Rates() []Rate
 }
 
 type Rate struct {
@@ -71,28 +72,37 @@ type rateEx struct{ Rate *Rate }
 
 func (e *rateEx) Buy(x float64) (float64, error)  { return e.Rate.doBuy(x) }
 func (e *rateEx) Sell(x float64) (float64, error) { return e.Rate.doSell(x) }
+func (e *rateEx) Rates() []Rate                   { return []Rate{*e.Rate} }
 
 func newRatesEx(rates []Rate) Interface {
 	e := new(ratesEx)
 	// Use index to iterate over the slice not to copy structs.
 	for i := range rates {
 		// TODO: panic when multiple rates have same thresholds?
-		e.Rates = append(e.Rates, &rates[i])
+		e.rates = append(e.rates, &rates[i])
 	}
 	e.sortRates()
 	return e
 }
 
-type ratesEx struct{ Rates []*Rate }
+type ratesEx struct{ rates []*Rate }
 
 func (e *ratesEx) sortRates() {
-	sort.Slice(e.Rates, func(i, j int) bool {
-		return e.Rates[i].Threshold > e.Rates[j].Threshold
+	sort.Slice(e.rates, func(i, j int) bool {
+		return e.rates[i].Threshold > e.rates[j].Threshold
 	})
 }
 
 func (e *ratesEx) Buy(x float64) (float64, error)  { return e.exchange(x, chooseBuy) }
 func (e *ratesEx) Sell(x float64) (float64, error) { return e.exchange(x, chooseSell) }
+
+func (e *ratesEx) Rates() []Rate {
+	v := make([]Rate, len(e.rates))
+	for i, r := range e.rates {
+		v[i] = *r
+	}
+	return v
+}
 
 type chooseFunc func(*Rate) Func
 
@@ -102,7 +112,7 @@ var (
 )
 
 func (e *ratesEx) exchange(x float64, chooseFunc chooseFunc) (y float64, err error) {
-	for _, rate := range e.Rates {
+	for _, rate := range e.rates {
 		y, err = chooseFunc(rate)(x)
 		if err == errThreshold {
 			continue
@@ -111,4 +121,9 @@ func (e *ratesEx) exchange(x float64, chooseFunc chooseFunc) (y float64, err err
 	}
 	y, err = 0, ErrNoRate
 	return
+}
+
+func Invert(v Interface) Interface {
+	// TODO: Invert v. Pay attention to inverted Threshold for multiple rates.
+	return v
 }
