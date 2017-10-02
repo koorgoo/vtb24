@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-const DefaultRatesTimeout = 5 * time.Minute
+const DefaultRatesTimeout = Duration(5 * time.Minute)
 
 type Config struct {
 	WebAddr       string        `json:"web_addr"`
 	TelegramToken string        `json:"telegram_token"`
-	RatesTimeout  time.Duration `json:"rates_timeout"`
+	RatesTimeout  Duration      `json:"rates_timeout"`
 	Donate        *DonateConfig `json:"donate"`
 }
 
@@ -60,4 +60,22 @@ func ParseJSON(filename string) (c Config, err error) {
 		return
 	}
 	return
+}
+
+type Duration time.Duration
+
+// UnmarshalJSON implements json.Unmarshaler interface.
+func (d *Duration) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+
+	noQuotes := data[1 : len(data)-1]
+	v, err := time.ParseDuration(string(noQuotes))
+	if err != nil {
+		return fmt.Errorf("duration: %s", err)
+	}
+
+	*d = Duration(v)
+	return nil
 }

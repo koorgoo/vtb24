@@ -1,4 +1,5 @@
 {
 	"web_addr": ":8000",
-	"telegram_token": "test"
+	"telegram_token": "test",
+	"rates_timeout": "1m"
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 var ParseJSONTests = []struct {
@@ -12,7 +13,12 @@ var ParseJSONTests = []struct {
 }{
 	{
 		"testdata/valid.json",
-		Config{WebAddr: ":8000", TelegramToken: "test"},
+		Config{WebAddr: ":8000", TelegramToken: "test", RatesTimeout: Duration(time.Minute)},
+		true,
+	},
+	{
+		"testdata/valid-with-defaults.json",
+		Config{WebAddr: ":8000", TelegramToken: "test", RatesTimeout: DefaultRatesTimeout},
 		true,
 	},
 	{"testdata/no-web-addr.json", Config{}, false},
@@ -29,7 +35,7 @@ func TestParseJSON(t *testing.T) {
 				t.Errorf("want %v, got %v", tt.Config, c)
 			}
 			if ok := (err == nil); ok != tt.OK {
-				t.Errorf("error: want %v, got %v", tt.OK, ok)
+				t.Errorf("error: want %v, got %v: %v", tt.OK, ok, err)
 			}
 		})
 	}

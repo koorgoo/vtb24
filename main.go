@@ -60,7 +60,7 @@ func main() {
 
 	go func() {
 		for {
-			t := cfg.RatesTimeout
+			t := time.Duration(cfg.RatesTimeout)
 			e, err := GetDefaultEx()
 			if err == nil {
 				rates.Store(e)
