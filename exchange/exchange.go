@@ -14,8 +14,6 @@ var (
 // threshold.
 var errThreshold = errors.New("")
 
-const nilThreshold = 0.0
-
 type Func func(float64) (float64, error)
 
 type Interface interface {
@@ -31,23 +29,55 @@ type Rate struct {
 	// Threshold sets the minimum amount for exchange. Threshold is used to
 	// find a rate matching a provided amount only when a few rates are passed
 	// into New().
-	Threshold float64
+	Threshold Threshold
+
+	inverted bool
 }
 
-func (r *Rate) doBuy(x float64) (float64, error)  { return r.exchange(x, r.Buy) }
-func (r *Rate) doSell(x float64) (float64, error) { return r.exchange(x, r.Sell) }
+func (r *Rate) doBuy(x float64) (float64, error)  { return doExchange(x, r.Buy, r.Threshold.Buy()) }
+func (r *Rate) doSell(x float64) (float64, error) { return doExchange(x, r.Sell, r.Threshold.Sell()) }
 
-func (r *Rate) exchange(x, rate float64) (y float64, err error) {
+func doExchange(x, rate, threshold float64) (y float64, err error) {
 	switch {
 	case x < 0:
 		err = ErrNegativeAmount
-	case x < r.Threshold:
+	case x < threshold:
 		err = errThreshold
 	default:
 		y = x * rate
 	}
 	return
 }
+
+func (r *Rate) invert() *Rate {
+	s, b := 1/r.Buy, 1/r.Sell
+	th := r.invertThreshold()
+	return &Rate{Buy: b, Sell: s, Threshold: th, inverted: !r.inverted}
+}
+
+func (r *Rate) invertThreshold() Threshold {
+	b, s := r.Threshold.Buy(), r.Threshold.Sell()
+	if r.inverted {
+		s, b = b/r.Buy, s/r.Sell
+	} else {
+		s, b = b*r.Buy, s*r.Sell
+	}
+	return NewThreshold(b, s)
+}
+
+type Threshold interface {
+	Buy() float64
+	Sell() float64
+}
+
+func NewThreshold(buy, sell float64) Threshold {
+	return &threshold{buy: buy, sell: sell}
+}
+
+type threshold struct{ buy, sell float64 }
+
+func (t *threshold) Buy() float64  { return t.buy }
+func (t *threshold) Sell() float64 { return t.sell }
 
 // New returns an Interface.
 //
@@ -59,9 +89,12 @@ func New(rates ...Rate) Interface {
 	case 1:
 		return newRateEx(&rates[0])
 	default:
+		// TODO: panic when rate has nil threshold?
 		return newRatesEx(rates)
 	}
 }
+
+var nilThreshold = NewThreshold(0, 0)
 
 func newRateEx(rate *Rate) Interface {
 	rate.Threshold = nilThreshold
@@ -79,26 +112,34 @@ func newRatesEx(rates []Rate) Interface {
 	// Use index to iterate over the slice not to copy structs.
 	for i := range rates {
 		// TODO: panic when multiple rates have same thresholds?
-		e.rates = append(e.rates, &rates[i])
+		rate := &rates[i]
+		e.buy = append(e.buy, rate)
+		e.sell = append(e.sell, rate)
 	}
 	e.sortRates()
 	return e
 }
 
-type ratesEx struct{ rates []*Rate }
+type ratesEx struct {
+	buy  []*Rate
+	sell []*Rate
+}
 
 func (e *ratesEx) sortRates() {
-	sort.Slice(e.rates, func(i, j int) bool {
-		return e.rates[i].Threshold > e.rates[j].Threshold
+	sort.Slice(e.buy, func(i, j int) bool {
+		return e.buy[i].Threshold.Buy() > e.buy[j].Threshold.Buy()
+	})
+	sort.Slice(e.sell, func(i, j int) bool {
+		return e.sell[i].Threshold.Sell() > e.sell[j].Threshold.Sell()
 	})
 }
 
-func (e *ratesEx) Buy(x float64) (float64, error)  { return e.exchange(x, chooseBuy) }
-func (e *ratesEx) Sell(x float64) (float64, error) { return e.exchange(x, chooseSell) }
+func (e *ratesEx) Buy(x float64) (float64, error)  { return exchange(x, e.buy, chooseBuy) }
+func (e *ratesEx) Sell(x float64) (float64, error) { return exchange(x, e.sell, chooseSell) }
 
 func (e *ratesEx) Rates() []Rate {
-	v := make([]Rate, len(e.rates))
-	for i, r := range e.rates {
+	v := make([]Rate, len(e.buy))
+	for i, r := range e.buy {
 		v[i] = *r
 	}
 	return v
@@ -111,8 +152,8 @@ var (
 	chooseSell            = func(r *Rate) Func { return r.doSell }
 )
 
-func (e *ratesEx) exchange(x float64, chooseFunc chooseFunc) (y float64, err error) {
-	for _, rate := range e.rates {
+func exchange(x float64, rates []*Rate, chooseFunc chooseFunc) (y float64, err error) {
+	for _, rate := range rates {
 		y, err = chooseFunc(rate)(x)
 		if err == errThreshold {
 			continue
@@ -124,6 +165,9 @@ func (e *ratesEx) exchange(x float64, chooseFunc chooseFunc) (y float64, err err
 }
 
 func Invert(v Interface) Interface {
-	// TODO: Invert v. Pay attention to inverted Threshold for multiple rates.
-	return v
+	rates := v.Rates()
+	for i := range rates {
+		rates[i] = *rates[i].invert()
+	}
+	return New(rates...)
 }

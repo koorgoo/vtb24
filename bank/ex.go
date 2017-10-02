@@ -50,7 +50,7 @@ func ParseEx(resp *api.Response) []Ex {
 		m[src][dst][group] = append(m[src][dst][group], exchange.Rate{
 			Buy:       float64(item.Buy),
 			Sell:      float64(item.Sell),
-			Threshold: item.Gradation,
+			Threshold: exchange.NewThreshold(item.Gradation, item.Gradation),
 		})
 	}
 
@@ -59,7 +59,7 @@ func ParseEx(resp *api.Response) []Ex {
 		for dst := range m[src] {
 			for group, rates := range m[src][dst] {
 				e := exchange.New(rates...)
-				v = append(&ex{src: src, dst: dst, group: group, Interface: e})
+				v = append(v, &ex{src: src, dst: dst, group: group, Interface: e})
 			}
 		}
 	}
@@ -112,7 +112,7 @@ func WithGroup(groups ...string) ExFilter {
 	}
 }
 
-func Invert(ex Ex) Ex {
-	i := exchange.Invert(ex)
-	return &ex{src: ex.Dst(), dst: ex.Src(), group: ex.Group(), Interface: i}
+func Invert(e Ex) Ex {
+	i := exchange.Invert(e)
+	return &ex{src: e.Dst(), dst: e.Src(), group: e.Group(), Interface: i}
 }

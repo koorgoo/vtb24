@@ -85,6 +85,7 @@ func main() {
 
 				text, mode, err := chat.MakeMessage(n, ex)
 				if err != nil {
+					log.Println(err)
 					_, _ = bot.SendMessage(context.TODO(), &telegram.TextMessage{
 						ChatID: update.Message.Chat.ID,
 						Text:   fmt.Sprintf("Не удалось обменять %v.", n),

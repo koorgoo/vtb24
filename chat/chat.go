@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/koorgoo/telegram"
+	"github.com/koorgoo/vtb24/api"
 	"github.com/koorgoo/vtb24/bank"
 )
 
@@ -25,7 +26,20 @@ func MakeMessage(n float64, ex []bank.Ex) (text string, mode telegram.ParseMode,
 			return
 		}
 
-		fmt.Fprintf(&buf, "_%s_\n", e)
+		fmt.Fprintf(&buf, "%s\n", FormatEx(e))
+		fmt.Fprintf(&buf, "*%v* %v - *%v* (покупка) *%v* (продажа) %v\n",
+			n, e.Src(), FormatValue(buy), FormatValue(sell), e.Dst())
+
+		e = bank.Invert(e)
+		buy, err = e.Buy(n)
+		if err != nil {
+			return
+		}
+		sell, err = e.Sell(n)
+		if err != nil {
+			return
+		}
+
 		fmt.Fprintf(&buf, "*%v* %v - *%v* (покупка) *%v* (продажа) %v\n\n",
 			n, e.Src(), FormatValue(buy), FormatValue(sell), e.Dst())
 	}
@@ -43,4 +57,9 @@ func FormatValue(v float64) (s string) {
 		s = s[:len(s)-3]
 	}
 	return
+}
+
+func FormatEx(ex bank.Ex) string {
+	s := api.GroupText(ex.Group())
+	return fmt.Sprintf("_%s_", s)
 }
